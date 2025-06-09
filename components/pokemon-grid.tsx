@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Pokemon } from '@/lib/types';
 import { PokemonCard } from './pokemon-card';
+import { PokemonModal } from './pokemon-modal';
 import { SearchBar } from './search-bar';
 import { TypeFilter } from './type-filter';
 import { Pagination } from './pagination';
@@ -16,6 +17,10 @@ export function PokemonGrid({ pokemons, types }: PokemonGridProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(
+        null,
+    );
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const pokemonsPerPage = 60;
 
@@ -40,18 +45,15 @@ export function PokemonGrid({ pokemons, types }: PokemonGridProps) {
         }
 
         return filtered;
-    }, [pokemons, searchTerm, selectedType]);
-
-    // Calculate pagination
+    }, [pokemons, searchTerm, selectedType]); // Calculate pagination
     const totalPages = Math.ceil(filteredPokemons.length / pokemonsPerPage);
     const startIndex = (currentPage - 1) * pokemonsPerPage;
     const endIndex = startIndex + pokemonsPerPage;
-    const currentPokemons = filteredPokemons.slice(startIndex, endIndex);
-
-    // Reset page when filters change
+    const currentPokemons = filteredPokemons.slice(startIndex, endIndex); // Reset page when filters change
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
         setCurrentPage(1);
+        setIsModalOpen(false); // Fecha qualquer modal aberto
     };
 
     const handleTypeChange = (type: string) => {
@@ -63,6 +65,16 @@ export function PokemonGrid({ pokemons, types }: PokemonGridProps) {
         setCurrentPage(page);
     };
 
+    const handlePokemonClick = (pokemon: Pokemon) => {
+        setSelectedPokemon(pokemon);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedPokemon(null);
+    };
+
     return (
         <>
             {/* Search and Filter Controls */}
@@ -72,25 +84,29 @@ export function PokemonGrid({ pokemons, types }: PokemonGridProps) {
                     types={types}
                     onTypeChange={handleTypeChange}
                 />
-            </div>
-
+            </div>{' '}
             {/* Pokemon Grid */}
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6'>
                 {currentPokemons.map((pokemon) => (
                     <PokemonCard
                         key={pokemon.id}
                         pokemon={pokemon}
+                        onClick={() => handlePokemonClick(pokemon)}
                     />
                 ))}
             </div>
-
+            {/* Pokemon Modal */}
+            <PokemonModal
+                pokemon={selectedPokemon}
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+            />
             {/* Pagination */}
             <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
             />
-
             {/* Results info */}
             <div className='text-center text-white mb-4'>
                 <p className='text-sm opacity-90'>
@@ -99,7 +115,6 @@ export function PokemonGrid({ pokemons, types }: PokemonGridProps) {
                     {filteredPokemons.length} Pokémon
                 </p>
             </div>
-
             {/* No results message */}
             {filteredPokemons.length === 0 && (
                 <div className='text-center py-8'>

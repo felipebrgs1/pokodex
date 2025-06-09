@@ -1,5 +1,4 @@
 import { Pokemon } from '@/lib/types';
-import { TypeBadge } from './type-badge';
 import { StatBar } from './stat-bar';
 
 interface PokemonDetailProps {

@@ -1,36 +1,21 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import { Pokemon } from '@/lib/types';
 import { TypeBadge } from './type-badge';
-import { PokemonDetail } from './pokemon-detail';
 
 interface PokemonCardProps {
     pokemon: Pokemon;
+    onClick?: () => void;
 }
 
-export function PokemonCard({ pokemon }: PokemonCardProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    const toggleExpand = () => {
-        setIsExpanded(!isExpanded);
-    };
-
+export function PokemonCard({ pokemon, onClick }: PokemonCardProps) {
     return (
         <div
-            className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${
-                isExpanded ? 'ring-2 ring-blue-300' : ''
-            }`}
+            className='bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer'
+            onClick={onClick}
         >
-            {/* Pokemon Card Header */}
-            <div
-                className={`p-4 cursor-pointer transition-colors ${
-                    isExpanded ? 'bg-blue-50' : ''
-                }`}
-                onClick={toggleExpand}
-            >
-                {' '}
+            <div className='p-4'>
                 <div className='flex items-center space-x-4'>
                     <Image
                         src={pokemon.image}
@@ -57,14 +42,8 @@ export function PokemonCard({ pokemon }: PokemonCardProps) {
                             ))}
                         </div>
                     </div>
-                    <div className='text-gray-400'>
-                        {isExpanded ? '▲' : '▼'}
-                    </div>
                 </div>
             </div>
-
-            {/* Expanded Details */}
-            {isExpanded && <PokemonDetail pokemon={pokemon} />}
         </div>
     );
 }
