@@ -1,4 +1,6 @@
-import { Pokemon, PokemonListResponse, PokemonDetailResponse } from './types';
+'use server';
+
+import { Pokemon, PokemonListResponse, PokemonDetailResponse, GenerationResponse } from './types';
 import { withRetry, batchRequests } from './utils';
 
 const API_BASE_URL = 'https://pokeapi.co/api/v2';
@@ -8,11 +10,11 @@ export async function fetchPokemonList(limit: number = 151): Promise<PokemonList
         const response = await fetch(`${API_BASE_URL}/pokemon?limit=${limit}`, {
             next: { revalidate: 3600 } // Cache for 1 hour
         });
-        
+
         if (!response.ok) {
             throw new Error(`Failed to fetch Pokemon list: ${response.status}`);
         }
-        
+
         return response.json();
     });
 }
@@ -22,11 +24,11 @@ export async function fetchPokemonDetail(url: string): Promise<PokemonDetailResp
         const response = await fetch(url, {
             next: { revalidate: 3600 } // Cache for 1 hour
         });
-        
+
         if (!response.ok) {
             throw new Error(`Failed to fetch Pokemon detail: ${response.status}`);
         }
-        
+
         return response.json();
     });
 }
@@ -35,7 +37,7 @@ async function processPokemonBatch(pokemonBatch: Array<{ name: string; url: stri
     const pokemonDetails = await Promise.all(
         pokemonBatch.map(async (pokemon) => {
             const detail = await fetchPokemonDetail(pokemon.url);
-            
+
             return {
                 id: detail.id,
                 name: detail.name,
@@ -53,25 +55,71 @@ async function processPokemonBatch(pokemonBatch: Array<{ name: string; url: stri
             };
         })
     );
-    
+
     return pokemonDetails;
 }
 
 export async function fetchAllPokemons(): Promise<Pokemon[]> {
     try {
         const pokemonList = await fetchPokemonList();
-        
-        // Process Pokemon in batches to avoid overwhelming the API
         const pokemonDetails = await batchRequests(
             pokemonList.results,
-            10, // Process 10 Pokemon at a time
+            10,
             processPokemonBatch
         );
-        
-        // Sort by ID to ensure consistent order
+
         return pokemonDetails.sort((a, b) => a.id - b.id);
     } catch (error) {
         console.error('Error fetching Pokemon data:', error);
         throw new Error('Failed to load Pokemon data. Please try again later.');
     }
+}
+
+export async function fetchGenerations(): Promise<GenerationResponse> {
+    return withRetry(async () => {
+        const response = await fetch(`${API_BASE_URL}/generation`, {
+            next: { revalidate: 3600 } // Cache for 1 hour
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch generations: ${response.status}`);
+        }
+
+        return response.json();
+    });
+}
+
+export async function fetchPokemonByGeneration(generationName: string): Promise<Pokemon[]> {
+    return withRetry(async () => {
+        const response = await fetch(`${API_BASE_URL}/generation/${generationName}`, {
+            next: { revalidate: 3600 }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch generation: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const pokemonSpecies = data.pokemon_species;
+
+        // Process Pokemon in smaller batches of 100
+        const batchSize = 100;
+        const batches = [];
+
+        for (let i = 0; i < pokemonSpecies.length; i += batchSize) {
+            const batch = pokemonSpecies.slice(i, i + batchSize).map((species: { name: string }) => ({
+                name: species.name,
+                url: `${API_BASE_URL}/pokemon/${species.name}`
+            }));
+            batches.push(batch);
+        }
+
+        const allPokemon = [];
+        for (const batch of batches) {
+            const pokemonDetails = await batchRequests(batch, 10, processPokemonBatch);
+            allPokemon.push(...pokemonDetails);
+        }
+
+        return allPokemon.sort((a, b) => a.id - b.id);
+    });
 }

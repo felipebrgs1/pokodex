@@ -50,3 +50,15 @@ export interface PokemonDetailResponse {
         };
     }[];
 }
+
+export interface Generation {
+    name: string;
+    url: string;
+}
+
+export interface GenerationResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Generation[];
+}
